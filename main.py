@@ -1,5 +1,6 @@
 from typing import Union
-from fastapi import FastAPI, Path, Query
+from fastapi import FastAPI, HTTPException, Path, Query
+from pydantic import BaseModel, Field
 
 app = FastAPI()
 
@@ -8,37 +9,54 @@ app = FastAPI()
 # POST
 # PUT
 # DELETE
-# PATCH
-# HEAD
-# OPTIONS
 
-lista_items = {1: 'Item 1', 2: 'Item 2', 3: 'Item 3'}
+class Person(BaseModel):
+    name: str | None = Field(
+        default=None, title="The name's person", max_length=60
+    )
+    lastName: str | None = Field(
+        default=None, title="The lastName's person", max_length=60
+    )
+    age: int | None = Field(gt=18, description="the age must be greater than eighteen") 
+    
+person_list = {
+    1: {"name": "Pedro", "lastName": "Martinez", "age": 15},
+    2: {"name": "Mauricio", "lastName": "Lopez", "age": 23},
+    3: {"name": "Maria", "lastName": "Gutierrez", "age": 30},
+}
 
-# METODO PARA MOSTRAR UN ITEM ESPECIFICO
-@app.get("/items/{id_item}")
-async def show_item_name(id_item: int):
-    return lista_items[id_item]
+@app.get("/people")
+async def get_all_people():
+    return {"data": person_list}
 
-# METODO PARA MOSTRAR TODOS LOS ITEMS
-@app.get("/items")
-async def show_item_name():
-    return lista_items
+@app.get("/people/{id_person}", response_model=Person)
+async def get_person(id_person: int):
+    
+    if id_person not in person_list:
+        raise HTTPException(status_code=404, detail="Person not found")
+    
+    return person_list[id_person]
 
-# METODO PARA AGREGAR
-@app.post("/items")
-async def add_item(value: str):
-    cantidad = len(lista_items) + 1
-    lista_items[cantidad] = value;
-    return "Se agrego el item al diccionario"
+@app.post("/people", response_model=Person)
+async def new_person(person: Person):
+    contador = len(person_list) + 1
+    person_list[contador] = {"name": person.name, "lastName": person.lastName, "age": person.age}
+    return person_list[contador]
 
-# METODO PARA ACTUALIZAR
-@app.put("/items/{id_item}")
-async def update_item(id_item: int, new_value: str):
-    lista_items[id_item] = new_value
-    return "Valor Actualizado"
+@app.put("/people/{id_person}", response_model=Person)
+async def update_person(id_person: int, person: Person):
+    
+    if id_person not in person_list:
+        raise HTTPException(status_code=404, detail="Person not found")
+    
+    person_list[id_person] = {"name": person.name, "lastName": person.lastName, "age": person.age}
+    return person_list[id_person]
 
-# METODO PARA ELIMIAR UN ITEM
-@app.delete("/items/{id_item}")
-async def delete_item(id_item: int):
-    del lista_items[id_item]
-    return "El item ha sido eliminado"
+
+@app.delete("/people/{id_person}")
+async def delete_person(id_person: int):
+    if id_person not in person_list:
+        raise HTTPException(status_code=404, detail="Person not found")
+    
+    del person_list[id_person]
+    return "Person deleted"
